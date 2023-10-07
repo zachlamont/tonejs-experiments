@@ -57,7 +57,12 @@
   overflow-y: scroll;
 }
 
-.drag-n-drop-midi{
+.drag-n-drop-midi {
   padding: 20px;
   background-color: rgb(161, 216, 255);
+  margin-bottom: 30px;
+}
+.midi-player {
+  padding: 20px;
+  background-color: rgb(220, 161, 255);
 }
