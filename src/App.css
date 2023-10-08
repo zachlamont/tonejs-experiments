@@ -59,10 +59,19 @@
 
 .drag-n-drop-midi {
   padding: 20px;
-  background-color: rgb(161, 216, 255);
   margin-bottom: 30px;
+  background-color: rgb(161, 216, 255);
 }
 .midi-player {
   padding: 20px;
+  margin-bottom: 30px;
   background-color: rgb(220, 161, 255);
+}
+.simple-playhead {
+  padding: 20px;
+  background-color: rgb(161, 255, 213);
+}
+.interactive-playhead {
+  padding: 20px;
+  background-color: rgb(208, 255, 161);
 }

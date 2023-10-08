@@ -2,6 +2,7 @@ import React, { useCallback, useState } from "react";
 import { useDropzone } from "react-dropzone";
 import { Midi } from "@tonejs/midi";
 import * as Tone from "tone";
+import { sharedState } from "./sharedState"; // Adjust the path accordingly
 
 const MidiPlayer = () => {
   // State to hold the parsed MIDI data
@@ -13,82 +14,75 @@ const MidiPlayer = () => {
   // State to hold the name of the uploaded MIDI file for display
   const [midiFileName, setMidiFileName] = useState("");
 
+  // State to hold the created Part from Tone.js
   const [part, setPart] = useState(null);
 
+  // State to track if the MIDI is currently playing or paused
+  const [isPlaying, setIsPlaying] = useState(false);
+
   // Create a Tone.js sampler with specific URLs and base URL
-  // This is used to play back the MIDI data with actual sounds
   const sampler = new Tone.Sampler({
     urls: {
       A1: "A1.mp3",
       A2: "A2.mp3",
     },
     baseUrl: "https://tonejs.github.io/audio/casio/",
-    // Once the sampler loads, we set our isLoaded state to true
     onload: () => setIsLoaded(true),
   }).toDestination();
 
-  // Callback when a MIDI file is dropped onto our drop zone
   const onDrop = useCallback(
     async (acceptedFiles) => {
-      try {
-        const file = acceptedFiles[0];
-        // Set the name of the MIDI file for display
-        setMidiFileName(file.name);
-        // Convert the file to an array buffer for parsing
-        const arrayBuffer = await file.arrayBuffer();
-        const midiData = new Midi(arrayBuffer);
+      const file = acceptedFiles[0];
+      setMidiFileName(file.name); // Store the name for display
+      const arrayBuffer = await file.arrayBuffer();
+      const midiData = new Midi(arrayBuffer);
 
-        // Ensure we have valid MIDI data with tracks
-        if (midiData && midiData.tracks) {
-          // Create a Tone.js Part which schedules note events for playback
-          const midiPart = new Tone.Part((time, note) => {
-            sampler.triggerAttackRelease(
-              note.name,
-              note.duration,
-              time,
-              note.velocity
-            );
-          }).start(0);
+      if (midiData && midiData.tracks) {
+        const midiPart = new Tone.Part((time, note) => {
+          sampler.triggerAttackRelease(
+            note.name,
+            note.duration,
+            time,
+            note.velocity
+          );
+        }).start(0);
 
-          // Disabling loop ensures the MIDI only plays once per button click
-          midiPart.loop = false;
+        midiPart.loop = false;
+        midiData.tracks[0].notes.forEach((note) => {
+          midiPart.at(note.time, note);
+        });
 
-          // Schedule the note events for playback
-          midiData.tracks[0].notes.forEach((note) => {
-            midiPart.at(note.time, note);
-          });
-
-          setPart(midiPart); // Store our created Part in state
-          setMidi(midiData); // Store the parsed MIDI data in state
-        } else {
-          throw new Error("Midi data is invalid or missing tracks");
-        }
-      } catch (error) {
-        console.error("Error processing MIDI file", error);
+        setPart(midiPart);
+        setMidi(midiData);
+      } else {
+        console.error("MIDI file is either invalid or lacks tracks");
       }
+      // Once we set the MIDI and the sampler is loaded, we set isMidiLoaded to true
+      sharedState.isMidiLoaded = true;
     },
-    [sampler] // Re-create this callback if the sampler instance changes
+    [sampler]
   );
 
-  // Function to handle the playback of the MIDI data
-  const playMidi = () => {
+  const togglePlayback = () => {
     if (isLoaded) {
-      Tone.start(); // Required to start audio context in some browsers
-      Tone.Transport.stop(); // Ensure playback is stopped
-      Tone.Transport.position = 0; // Reset playback to start of MIDI file
-      Tone.Transport.start(); // Start the playback
+      Tone.start();
+      if (isPlaying) {
+        Tone.Transport.pause();
+      } else {
+        Tone.Transport.start();
+      }
+      setIsPlaying(!isPlaying);
     }
   };
 
-  // Setting up the dropzone hooks
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
-    accept: ".mid", // Only accept .mid files
+    accept: ".mid",
   });
 
   return (
     <div className="midi-player">
-      <h2> Midi Player </h2>
+      <h2>Midi Player 2</h2>
       <div {...getRootProps()} className="dropzone">
         <input {...getInputProps()} />
         {isDragActive ? (
@@ -99,8 +93,11 @@ const MidiPlayer = () => {
           <p>Drag & drop a MIDI file here, or click to select one</p>
         )}
       </div>
-      {/* Only show the play button if we have a loaded MIDI file */}
-      {midi && isLoaded && <button onClick={playMidi}>Play MIDI</button>}
+      {midi && isLoaded && (
+        <button onClick={togglePlayback}>
+          {isPlaying ? "Pause" : "Play"} MIDI
+        </button>
+      )}
     </div>
   );
 };
